@@ -14,14 +14,10 @@ def days_until_payment(due_date: date, from_date: date | None = None) -> int:
 
     Returns:
         Number of days until due. Negative if overdue.
-
-    BUG: returns absolute value, masking overdue payments by always
-    returning a non-negative number.
     """
     if from_date is None:
         from_date = date.today()
-    # BUGGY: should return (due_date - from_date).days (signed)
-    return abs((due_date - from_date).days)
+    return (due_date - from_date).days
 
 
 def monthly_payment(principal: float, annual_rate: float, months: int) -> float:
