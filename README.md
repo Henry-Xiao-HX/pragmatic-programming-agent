@@ -55,13 +55,16 @@ The `/fix-issues` workflow is defined in
 3. After one explicit user confirmation, the skill checks scope and refuses
    issues that are too broad or marked with labels such as `needs-design` or
    `breaking-change`.
-4. Before any investigation, the skill runs `git status --porcelain` and stops
-   if tracked files are already modified.
-5. Bob reads the referenced files, applies a minimal fix, and validates it from
-   the repository root using `ruff check .` and `pytest --tb=short -q`, using
-   `.venv/bin` when those executables are available.
-6. If validation passes, Bob creates a `fix/issue-{number}` branch, commits only
-   the touched files, pushes the branch, and opens a pull request.
+4. Before any investigation, the skill runs `git status --porcelain` (combined
+   with `git rev-parse --abbrev-ref HEAD`) and stops if tracked files are already
+   modified. The current branch name is stored and reused later.
+5. Bob reads the referenced files, applies a minimal fix, then confirms the
+   modified file list, branch availability, and remote in one command before
+   validating with `ruff check .` and `pytest --tb=short -q` (using `.venv/bin`
+   when available).
+6. If validation passes, Bob creates a `fix/issue-{number}` branch, stages only
+   the touched files, commits, and pushes — all as a single chained command —
+   then opens a pull request.
 7. If validation fails after repeated attempts, Bob reverts only the files it
    changed and stops without pushing broken code.
 

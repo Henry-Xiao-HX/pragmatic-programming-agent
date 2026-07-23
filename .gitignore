@@ -1,1 +1,9 @@
 .venv
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Bob runtime logs
+.bob/.bob-errors/

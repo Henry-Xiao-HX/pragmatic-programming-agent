@@ -46,14 +46,16 @@ Verify all four conditions. If any fail, print a clear reason and stop — do no
 Before reading or modifying any file, run:
 
 ```bash
-git status --porcelain
+git status --porcelain && git rev-parse --abbrev-ref HEAD
 ```
 
-If any **tracked** files appear (lines that do not start with `??`), stop immediately. Print the `git status` output and report:
+If any **tracked** files appear in the `git status` output (lines that do not start with `??`), stop immediately. Print the output and report:
 
 > "Uncommitted changes detected in the working tree. Please stash or commit those changes before running `/fix-issues`, then try again."
 
 Do **not** investigate or apply any fix. Exit the pipeline here.
+
+Store the branch name printed by `git rev-parse` — reused in Step 6; do not run that command again.
 
 ---
 
@@ -79,13 +81,15 @@ Use `write_file` only when a full rewrite is clearly required.
 Make the **minimal** change that resolves the issue.
 Do not reformat, refactor, or touch unrelated code.
 
-After applying the fix, capture the exact set of modified files:
+After applying the fix, capture the modified files and run the remaining pre-flight checks in one call:
 
 ```bash
-git diff --name-only
+git diff --name-only && git branch --list fix/issue-{number} && git remote get-url origin
 ```
 
-Store this list — it is the **authoritative file list** used for revert (Step 5) and `git add` (Step 6).
+- The `git diff --name-only` output is the **authoritative file list** used for revert (Step 5) and `git add` (Step 6). Store it.
+- If `git branch --list` prints the branch name, stop: "Branch `fix/issue-{number}` already exists." Do **not** push.
+- If `git remote get-url origin` fails or prints nothing, stop: "No `origin` remote found." Do **not** commit.
 
 ---
 
@@ -121,42 +125,20 @@ This data goes into the PR description.
 
 ## Step 6 — Commit and push
 
-Check whether the branch already exists:
+All pre-flight checks (branch existence, remote, current branch) were already performed in Steps 2b and 4. Use the stored values — do **not** re-run those commands.
+
+If the stored branch name (from Step 2b) is not `main` or `master`, stop: "You are not on main/master. Switch to the default branch before running `/fix-issues`." Do **not** branch or push.
+
+Run the entire commit-and-push sequence as one chained command:
 
 ```bash
-git branch --list fix/issue-{number}
-```
-
-If the branch exists, stop and report: "Branch `fix/issue-{number}` already exists. Delete it or use a different branch name before retrying." Do **not** push.
-
-If the branch does not exist, proceed:
-
-First, verify the `origin` remote exists:
-
-```bash
-git remote get-url origin
-```
-
-If this fails, stop and report: "No `origin` remote found. Push cannot continue." Do **not** commit.
-
-Check that the current branch is `main` or `master` before branching:
-
-```bash
-git rev-parse --abbrev-ref HEAD
-```
-
-If it is not `main` or `master`, stop and report: "You are not on main/master. Switch to the default branch before running `/fix-issues`." Do **not** branch or push.
-
-Then proceed:
-
-```bash
-git checkout -b fix/issue-{number}
-git add -- {authoritative file list from Step 4}
-git commit -m "fix: resolve issue #{number} — {short title}"
+git checkout -b fix/issue-{number} && \
+git add -- {authoritative file list from Step 4} && \
+git commit -m "fix: resolve issue #{number} — {short title}" && \
 git push -u origin fix/issue-{number}
 ```
 
-Use the **`git diff --name-only` list captured in Step 4** for `git add`. Never use `git add -A` or `git add .` — this prevents untracked generated files (coverage reports, lock file changes, build artefacts) from being included in the commit.
+Never use `git add -A` or `git add .` — this prevents untracked generated files (coverage reports, lock file changes, build artefacts) from being included in the commit.
 
 ---
 
