@@ -1,9 +1,9 @@
 # pragmatic-programming-agent
 
 A Python library of financial calculation utilities, used to demonstrate an
-AI-powered GitHub Actions workflow that automatically reviews open issues,
-applies code fixes, and opens pull requests — on a schedule, without human
-involvement.
+AI-powered Bob skill that automatically reviews open GitHub Issues, applies
+code fixes, and opens pull requests — triggered locally via IBM Bob, without
+needing cloud CI.
 
 ## Modules
 
@@ -35,10 +35,35 @@ ruff check .
 
 ## How the agent works
 
-1. A GitHub Actions workflow runs on a daily schedule.
-2. It fetches all open issues labelled `bot-fixable`.
-3. For each issue, it checks out a new branch, calls an AI agent with the
-   issue body and relevant source file, applies the suggested patch, then
-   runs `ruff check` + `pytest`.
-4. If both pass, the workflow opens a pull request referencing the issue.
-5. If they fail, it posts a comment on the issue and moves on.
+This repository includes intentionally seeded demo bugs and matching GitHub
+issues labelled `bot-fixable`. The Bob auto-fix flow is designed to fetch and
+attempt only those open issues.
+
+Issue fetching is handled by [`fetch-issues.py`](.bob/skills/fix-issues/fetch-issues.py),
+which uses the authenticated GitHub CLI to:
+
+- list open issues with the `bot-fixable` label
+- fetch a single issue by number
+- reject closed issues or issues missing the required label
+
+The `/fix-issues` workflow is defined in
+[`SKILL.md`](.bob/skills/fix-issues/SKILL.md) and works like this:
+
+1. Run `/fix-issues` (or `/fix-issues <number>`) inside IBM Bob.
+2. Bob runs [`fetch-issues.py`](.bob/skills/fix-issues/fetch-issues.py) and
+   presents the matching open `bot-fixable` issues.
+3. After one explicit user confirmation, the skill checks scope and refuses
+   issues that are too broad or marked with labels such as `needs-design` or
+   `breaking-change`.
+4. Before any investigation, the skill runs `git status --porcelain` and stops
+   if tracked files are already modified.
+5. Bob reads the referenced files, applies a minimal fix, and validates it from
+   the repository root using `ruff check .` and `pytest --tb=short -q`, using
+   `.venv/bin` when those executables are available.
+6. If validation passes, Bob creates a `fix/issue-{number}` branch, commits only
+   the touched files, pushes the branch, and opens a pull request.
+7. If validation fails after repeated attempts, Bob reverts only the files it
+   changed and stops without pushing broken code.
+
+This setup is intended for local demonstrations of a bounded GitHub issue
+triage-and-fix workflow rather than general autonomous maintenance.
