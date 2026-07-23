@@ -32,11 +32,8 @@ def compound_interest(
     Returns:
         Total balance (principal + interest).
 
-    BUG: uses `n` as an additive term instead of a multiplier in the exponent,
-    producing wrong results for any n > 1 (e.g. monthly compounding).
     """
-    # BUGGY: should be principal * (1 + rate / n) ** (n * time)
-    return principal * (1 + rate / n) ** (n + time)
+    return principal * (1 + rate / n) ** (n * time)
 
 
 def effective_annual_rate(nominal_rate: float, n: int) -> float:
